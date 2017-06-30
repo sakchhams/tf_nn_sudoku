@@ -1,11 +1,12 @@
 import numpy as np
 from os.path import isfile
+from os.path import sep
 from tempfile import TemporaryFile
 
 def load_data(size):
     #check if already loaded
-    path_str_x = "data/array_x_"+str(size)+".npy"
-    path_str_y = "data/array_y_"+str(size)+".npy"
+    path_str_x = "data"+ sep +"array_x_"+str(size)+".npy"
+    path_str_y = "data"+ sep +"array_y_"+str(size)+".npy"
     if isfile(path_str_x) and isfile(path_str_y):
         problems = np.load(path_str_x)
         solutions = np.load(path_str_y)

@@ -3,6 +3,7 @@ import numpy as np
 import os
 
 SAMPLE_SIZE = 100000 #could range from 1 to 1,000,000
+LOG_DIR = '/home/sudoku/logs'
 
 print("Loading dataset...")
 from input_data import load_data
@@ -43,7 +44,7 @@ with tf.Session() as sess:
     from sklearn.model_selection import train_test_split
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=.5)
     sess.run(init)
-    summary_writer = tf.summary.FileWriter('/home/sudoku/logs', graph=sess.graph)
+    summary_writer = tf.summary.FileWriter(LOG_DIR, graph=sess.graph)
     print("Begin training...")
     for index in range(len(x_train)):
         x_ = x_train[index]
