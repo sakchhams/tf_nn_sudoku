@@ -2,75 +2,105 @@ from __future__ import print_function
 import numpy as np
 import os
 
-SAMPLE_SIZE = 100000 #could range from 1 to 1,000,000
-LOG_DIR = '/home/sudoku/logs'
+#Parameters
+LOG_DIR = '/home/tf_nn_sudoku/logs'
+learning_rate = 0.001
+training_iters = 200000 #could range from 1 to 1,000,000
+batch_size = 200
+display_step = 4
+#N-Network Parameters
+n_input = 81 # sudoku puzzle : 9*9 matrix
+n_output = 81 # sudoku puzzle (solved) : 9*9 matrix
+dropout = 0.75 # dropout, probability to keep units
 
 print("Loading dataset...")
 from input_data import load_data
-X, Y = load_data(SAMPLE_SIZE)
+sudoku_dataset = load_data(training_iters)
 print("done.")
 
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 #placeholder to hold data while training
-x = tf.placeholder("float32", shape=(9, 9), name="input_data")
-y = tf.placeholder("float32", shape=(9, 9), name="output_data")
+x = tf.placeholder("float32", [batch_size, n_input], name="input_data")
+y = tf.placeholder("int32", [batch_size, n_output], name="output_data")
+keep_probability = tf.placeholder(tf.float32)
 
-#initialize weights with random values
-W_input_hidden = tf.Variable(tf.random_uniform(shape=(9, 6), minval= -10.0,maxval=10.0), name="W_in-h")
-W_hidden_hidden = tf.Variable(tf.random_uniform(shape=(6, 6), minval= -10.0,maxval=10.0), name="W_h-h")
-W_hidden_output = tf.Variable(tf.random_uniform(shape=(6, 9), minval= -10.0,maxval=10.0), name="W_h-ot")
+#creates a convolutional layer
+def Convolution2D(x, W, b, strides=1):
+    #conv2d parameters:
+    #x : 4d tensor for which 2d convolution is computed, tensor of the shape [batch, in_height, in_width, in_channels]
+    x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+    x = tf.nn.bias_add(x, b)
+    return tf.nn.relu6(x)
 
-tf.summary.histogram("Weights_input-hidden",  W_input_hidden)
-tf.summary.histogram("Weights_hidden-output", W_hidden_hidden)
-tf.summary.histogram("Weights_hidden-output", W_hidden_output)
+#MaxPool for convolutional layers
+def MaxPool2D(x, k=2):
+    return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
-with tf.name_scope("Wx") as scope:
-    hidden = tf.nn.relu6(tf.matmul(x,W_input_hidden))
-    hidden1 = tf.nn.relu6(tf.matmul(x,hidden))
-    model = tf.nn.relu6(tf.matmul(hidden1,W_hidden_output))
+#create a model
+def create_conv_network(x, weights, biases, dropout):
+    #reshape the input tensor as 4 dimensional
+    x = tf.reshape(x, shape=[-1, 9, 9, 1])
 
-#cost function seems in effective TODO: write a better cost function
-with tf.name_scope("cost_function") as scope:
-    cost_function = tf.reduce_mean(tf.square(y - model))
-    tf.summary.scalar("cost_function", cost_function)
+    #Layer1
+    l1 = Convolution2D(x, weights['wl1'], biases['bl1'])
+    l1 = MaxPool2D(l1, k=2) #down sampling
+    print("l1.shape: ", l1.shape)
 
-with tf.name_scope("train") as scope:
-    optimizer = tf.train.AdagradOptimizer(learning_rate=0.05).minimize(cost_function)
+    #Layer2
+    l2 = Convolution2D(l1, weights['wl2'], biases['bl2'])
+    l2 = MaxPool2D(l2, k=2) #down sampling
+    print("l2.shape: ", l2.shape)
+
+    #Layer3 - fully connected layer
+    fcl = tf.reshape(l2, shape=[-1, 3*3*64])
+    fcl = tf.add(tf.matmul(fcl, weights['wd1']), biases['bd1'])
+    fcl = tf.nn.relu6(fcl)
+    fcl = tf.nn.dropout(fcl, dropout) #apply dropout
+    print("fcl-dim:",fcl.shape)
+
+    return tf.add(tf.matmul(fcl, weights['out']), biases['out'])
+
+#initialize weights
+weights = {
+    #5x5 convolution 1 input 32 outputs
+    'wl1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
+    #5x5 convolution 32 inputs, from previous layer, 64 outputs
+    'wl2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+    #fully connected, 3*3*64 inputs, 1024 outputs
+    'wd1': tf.Variable(tf.random_normal([3*3*64, 1024])),
+    #1024 inputs, 81 outputs
+    'out': tf.Variable(tf.random_uniform([1024, n_output]))
+}
+
+#initialize biases
+biases = {
+    'bl1': tf.Variable(tf.random_normal([32])),
+    'bl2': tf.Variable(tf.random_normal([64])),
+    'bd1': tf.Variable(tf.random_normal([1024])),
+    'out': tf.Variable(tf.random_uniform([n_output]))
+}
+
+prediction_model = create_conv_network(x, weights, biases, keep_probability)
+print("prediction_model.shape :", prediction_model.shape)
+cost_function = tf.reduce_mean(tf.square(prediction_model - tf.to_float(y)))
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost_function)
+
+correct_pred = tf.equal(tf.argmax(prediction_model, 1), tf.argmax(y, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 init = tf.global_variables_initializer()
 
 with tf.Session() as sess:
-    from sklearn.model_selection import train_test_split
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=.5)
     sess.run(init)
-    summary_writer = tf.summary.FileWriter(LOG_DIR, graph=sess.graph)
-    print("Begin training...")
-    for index in range(len(x_train)):
-        x_ = x_train[index]
-        y_ = y_train[index]
-        x_ = x_.reshape(9,9)
-        y_ = y_.reshape(9,9)
-        sess.run(optimizer, feed_dict={x: x_, y: y_})
-        if (index + 1) % 100 == 0:
-            cost = sess.run(cost_function, feed_dict={x: x_, y: y_})
-            print("\rCOST : ",cost,end="")
-            merged = tf.summary.merge_all()
-            summary_str = sess.run(merged, feed_dict={x: x_, y: y_})
-            summary_writer.add_summary(summary_str)
-    print("\nTraining successful.")
-    print("Starting testing.")
-    average_error = 0.0
-    for index in range(len(x_test)):
-        x_ = x_test[index]
-        y_ = y_test[index]
-        x_ = x_.reshape(9,9)
-        y_ = y_.reshape(9,9)
-        y_out = sess.run(model, feed_dict={x: x_})
-        if (index + 1) % 100 == 0:
-            error = tf.reduce_mean(tf.square(y_ - y_out))
-            error = error.eval()
-            average_error += error
-            print("\rERROR : ",error,end="")
-    print("\nTesting finished.")
-    print("Error: %f"%(average_error/((len(x_test))/100)))
+    epoch = 1
+    while epoch * batch_size < training_iters:
+        batch_x, batch_y = sudoku_dataset.train.next_batch(batch_size)
+        sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_probability: dropout})
+        if epoch % display_step == 0:
+            loss, acc = sess.run([cost_function, accuracy], feed_dict={x: batch_x, y: batch_y, keep_probability: 1.})
+            print("Iter " + str(epoch*batch_size) + ", Minibatch Loss= " + "{:.6f}".format(loss) + ", Training Accuracy= " + "{:.5f}".format(acc))
+        epoch += 1
+    print("Optimization Finished!")
+    print("Testing Accuracy:", sess.run(accuracy, feed_dict={x: sudoku_dataset.test.problems[:256], y: sudoku_dataset.test.solutions[:256], keep_probability: 1.}))
