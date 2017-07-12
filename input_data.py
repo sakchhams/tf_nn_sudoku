@@ -28,16 +28,18 @@ class SudokuData(object):
         path_str_x = "data"+ sep +"array_x_"+str(self.sample_size)+".npy"
         path_str_y = "data"+ sep +"array_y_"+str(self.sample_size)+".npy"
         if not self._loadCached(path_str_x, path_str_y):
-            self.problems = np.zeros((self.sample_size, 81), np.int32)
-            self.solutions = np.zeros((self.sample_size, 81), np.int32)
+            problems = np.zeros((self.sample_size, 81), np.int32)
+            solutions = np.zeros((self.sample_size, 81), np.int32)
             for i, line in enumerate(open('data/sudoku.csv', 'r').read().splitlines()[1:]):
                 quiz, solution = line.split(",")
                 for j, q_s in enumerate(zip(quiz, solution)):
                     q, s = q_s
-                    self.problems[i, j] = q
-                    self.solutions[i, j] = s
+                    problems[i, j] = q
+                    solutions[i, j] = s
                 if i == (self.sample_size-1):
                     break
+            self.problems = np.reshape(problems, (self.sample_size, 9, 9))
+            self.solutions = np.reshape(solutions, (self.sample_size, 9, 9))
             np.save(path_str_x, self.problems)
             np.save(path_str_y, self.solutions)
         self._load_train_and_test()
