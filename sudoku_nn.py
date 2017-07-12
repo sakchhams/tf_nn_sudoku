@@ -46,13 +46,10 @@ def batch_normalize(tensor):
 def create_conv_network(x):
     #reshape the input tensor as 4 dimensional
     x_enc = tf.reshape(x, shape=[-1, 9, 9, 1])
-    print("x_enc.shape", x_enc.get_shape())
     for _ in range(n_blocks):
         x_enc = Convolution2D(inputs=x_enc, filters=512, kernel_size=3)
-        print("x_enc.shape", x_enc.get_shape())
 
     logits = Convolution2D(inputs=x_enc, filters=10, kernel_size=1)
-    print("logits.shape", logits.get_shape())
     return logits
 
 istarget = tf.to_float(tf.equal(x, tf.zeros_like(x)))
