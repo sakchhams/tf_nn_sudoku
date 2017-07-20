@@ -1,6 +1,7 @@
 Overview
 ============
 A convolutional neural network written in python using tensorflow, that is designed to solve sudoku puzzles.
+Note: Sudoku solution needs a renforced learning approach, so that the existing numbers are not modified.
 
 Training Datsource :
 ============
