@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from __future__ import print_function
 import numpy as np
 import os
@@ -83,7 +84,7 @@ with tf.Session() as sess:
     saver = tf.train.Saver()
     from os.path import isfile
     if not isfile(MODEL_STORE+".index"):
-        print("Testing:")
+        print("Training:")
         train(sess)
         save_path = saver.save(sess, MODEL_STORE)
     else:

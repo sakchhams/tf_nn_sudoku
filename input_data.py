@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 from os.path import isfile
 from os.path import sep
@@ -45,7 +46,7 @@ class SudokuData(object):
         self._load_train_and_test()
 
 class DataBean(object):
-    """docstring for DataBean."""
+    """Container for train and test data"""
     def __init__(self, x, y):
         super(DataBean, self).__init__()
         self.problems = x
@@ -58,7 +59,16 @@ class DataBean(object):
         self.index += batch_size
         return x, y
 
+def extract_data_tarball():
+    print("Extracting data from tar.")
+    import tarfile
+    data_tar = tarfile.open("data"+sep+"sudoku.csv.tar.bz2")
+    data_tar.extractall("data")
+    data_tar.close()
+
 def load_data(size):
+    if not isfile("data"+sep+"sudoku.csv"):
+        extract_data_tarball()
     Data = SudokuData(size)
     Data.load()
     return Data
