@@ -81,15 +81,7 @@ def train(sess):
 
 with tf.Session() as sess:
     sess.run(init)
-    saver = tf.train.Saver()
-    from os.path import isfile
-    if not isfile(MODEL_STORE+".index"):
-        print("Training:")
-        train(sess)
-        save_path = saver.save(sess, MODEL_STORE)
-    else:
-        print("Restoring session:")
-        saver.restore(sess, MODEL_STORE)
+    train(sess)
     x_test, y_test = sudoku_dataset.test.next_batch(200)
     pred = sess.run(predictions, feed_dict={x: x_test, y: y_test})
     print("x", x_test[0])
