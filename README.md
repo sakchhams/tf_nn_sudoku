@@ -6,7 +6,8 @@ Note: Sudoku solution needs a renforced learning approach, so that the existing 
 Training Datsource :
 ============
 [1 million](https://www.kaggle.com/bryanpark/sudoku) Sudoku games by [Bryan Park](https://www.kaggle.com/bryanpark)
-Download the data source and place the csv file in the `data/` subdirectory of current repo. Downloading the data source requies sign in in with a kaggle account.
+A tarball for the above data is included and should work just fine.
+Otherwise download the above data source and place the csv file in the `data/` subdirectory of current repo. Downloading the data source requies sign in with a kaggle account.
 
 Dependencies :
 ============
